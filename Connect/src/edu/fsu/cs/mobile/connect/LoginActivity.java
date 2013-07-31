@@ -100,7 +100,8 @@ public class LoginActivity extends FragmentActivity {
 	    if (session != null && session.isOpened()) {
 	        // if the session is already open,
 	        // try to show the selection fragment
-	        showFragment(SELECTION, false);
+	       // showFragment(SELECTION, false);
+	    	switchActivities();
 	    } else {
 	        // otherwise present the splash screen
 	        // and ask the person to login.
@@ -162,7 +163,8 @@ public class LoginActivity extends FragmentActivity {
 	        if (state.isOpened()) {
 	            // If the session state is open:
 	            // Show the authenticated fragment
-	            showFragment(SELECTION, false);
+	            //showFragment(SELECTION, false);
+	        	switchActivities();
 	        } else if (state.isClosed()) {
 	            // If the session state is closed:
 	            // Show the login fragment
@@ -173,6 +175,10 @@ public class LoginActivity extends FragmentActivity {
 	
 	private void switchActivities() {
 		Session session = Session.getActiveSession();
+		Bundle bundle = new Bundle();
+		bundle.putString("access_token", session.getAccessToken());
+		Intent intent = new Intent(LoginActivity.this, TabsFragmentActivity.class);
+		startActivity(intent);
 	}
 
 }
