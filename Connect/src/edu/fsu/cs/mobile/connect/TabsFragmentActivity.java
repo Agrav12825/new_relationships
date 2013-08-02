@@ -1,6 +1,10 @@
 package edu.fsu.cs.mobile.connect;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 import android.content.Context;
 import android.content.Intent;
@@ -8,11 +12,17 @@ import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.FragmentTransaction;
+import android.util.Log;
 import android.view.View;
 import android.widget.TabHost;
 import android.widget.TabHost.TabContentFactory;
+import android.widget.Toast;
 
+import com.facebook.HttpMethod;
+import com.facebook.Request;
+import com.facebook.Response;
 import com.facebook.Session;
+import com.facebook.model.GraphObject;
 
 public class TabsFragmentActivity extends FragmentActivity implements
 		TabHost.OnTabChangeListener {
@@ -20,6 +30,10 @@ public class TabsFragmentActivity extends FragmentActivity implements
 	private TabHost mTabHost;
 	private HashMap<String, TabInfo> mapTabInfo = new HashMap<String, TabsFragmentActivity.TabInfo>();
 	private TabInfo mLastTab = null;
+	private static Fragment currentFrag = null;
+	private final static String TAG = "result";
+	static ArrayList<String> names, uids, pics;
+	static Bundle forFragment;
 
 	private class TabInfo {
 		private String tag;
@@ -74,7 +88,9 @@ public class TabsFragmentActivity extends FragmentActivity implements
 		if (tabInfo.fragment != null && !tabInfo.fragment.isDetached()) {
 			FragmentTransaction ft = activity.getSupportFragmentManager()
 					.beginTransaction();
+
 			ft.detach(tabInfo.fragment);
+			currentFrag = tabInfo.fragment;
 			ft.commit();
 			activity.getSupportFragmentManager().executePendingTransactions();
 		}
@@ -87,20 +103,26 @@ public class TabsFragmentActivity extends FragmentActivity implements
 		mTabHost.setup();
 		TabInfo tabInfo = null;
 		TabsFragmentActivity.addTab(this, this.mTabHost, this.mTabHost
-				.newTabSpec("Tab1").setIndicator("Tab 1"),
-				(tabInfo = new TabInfo("Tab1", FriendsTabFragment.class, args)));
+				.newTabSpec("Friends").setIndicator("Friends"),
+				(tabInfo = new TabInfo("Friends", FriendsTabFragment.class,
+						args)));
 		this.mapTabInfo.put(tabInfo.tag, tabInfo);
 		TabsFragmentActivity.addTab(this, this.mTabHost, this.mTabHost
-				.newTabSpec("Tab2").setIndicator("Tab 2"),
-				(tabInfo = new TabInfo("Tab2", LikesTabFragment.class, args)));
+				.newTabSpec("Likes").setIndicator("Likes"),
+				(tabInfo = new TabInfo("Likes", LikesTabFragment.class, args)));
 		this.mapTabInfo.put(tabInfo.tag, tabInfo);
 
 		// Default to first tab
-		this.onTabChanged("Tab1");
+		this.onTabChanged("Friends");
 		mTabHost.setOnTabChangedListener(this);
 	}
 
 	protected void onCreate(Bundle savedInstanceState) {
+
+		uids = new ArrayList<String>();
+		names = new ArrayList<String>();
+		pics = new ArrayList<String>();
+
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.tabs_layout);
 		initialiseTabHost(savedInstanceState);
@@ -108,12 +130,45 @@ public class TabsFragmentActivity extends FragmentActivity implements
 			mTabHost.setCurrentTabByTag(savedInstanceState.getString("tab"));
 
 		}
+
+		Intent intent = getIntent();
+		Bundle bundle = intent.getExtras();
+
+		String friendsQuery = "SELECT name,uid,pic_square FROM user WHERE uid IN "
+				+ "(SELECT uid2 FROM friend WHERE uid1=me() )";
+
+		Bundle params = new Bundle();
+		params.putString("q", friendsQuery);
+		Session session = Session.getActiveSession();
+		Request request = new Request(session, "/fql", params, HttpMethod.GET,
+				new Request.Callback() {
+					public void onCompleted(Response response) {
+						Log.d(TAG, "Result: " + response.toString());
+						
+						FragmentTransaction ft = getSupportFragmentManager()
+								.beginTransaction();
+						
+						ft.remove(currentFrag);
+						FriendsTabFragment frag = new FriendsTabFragment();
+						frag.setArguments(parseUserFromFQLResponse(response));
+						ft.add(frag,"Friends");
+						ft.commit();
+						getSupportFragmentManager().executePendingTransactions();
+					}
+				});
+
+		Request.executeBatchAsync(request);
+
+		if (bundle != null) {
+
+		}
 	}
-	
+
 	@Override
 	public void onActivityResult(int requestCode, int resultCode, Intent data) {
-	  super.onActivityResult(requestCode, resultCode, data);
-	  Session.getActiveSession().onActivityResult(this, requestCode, resultCode, data);
+		super.onActivityResult(requestCode, resultCode, data);
+		Session.getActiveSession().onActivityResult(this, requestCode,
+				resultCode, data);
 	}
 
 	public void onTabChanged(String tag) {
@@ -137,8 +192,43 @@ public class TabsFragmentActivity extends FragmentActivity implements
 			}
 
 			mLastTab = newTab;
+			currentFrag = mLastTab.fragment;
 			ft.commit();
 			this.getSupportFragmentManager().executePendingTransactions();
 		}
+	}
+
+	public final Bundle parseUserFromFQLResponse(Response response) {
+		
+		Bundle b = new Bundle();
+		
+		try {
+			GraphObject go = response.getGraphObject();
+			JSONObject jso = go.getInnerJSONObject();
+			JSONArray arr = jso.getJSONArray("data");
+
+			for (int i = 0; i < (arr.length()); i++) {
+				JSONObject json_obj = arr.getJSONObject(i);
+
+				String id = json_obj.getString("uid");
+				uids.add(id);
+				String name = json_obj.getString("name");
+				names.add(name);
+				String urlImg = json_obj.getString("pic_square");
+				pics.add(urlImg);
+
+				
+				b.putStringArrayList("theNames", names);
+				b.putStringArrayList("theIds", uids);
+				b.putStringArrayList("thePics", pics);
+
+				
+			}
+
+		} catch (Throwable t) {
+			t.printStackTrace();
+		}
+		
+		return b;
 	}
 }

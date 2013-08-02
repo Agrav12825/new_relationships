@@ -6,9 +6,13 @@ import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentTransaction;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 
+import com.facebook.HttpMethod;
+import com.facebook.Request;
+import com.facebook.Response;
 import com.facebook.Session;
 import com.facebook.SessionState;
 import com.facebook.UiLifecycleHelper;
@@ -177,7 +181,10 @@ public class LoginActivity extends FragmentActivity {
 		Session session = Session.getActiveSession();
 		Bundle bundle = new Bundle();
 		bundle.putString("access_token", session.getAccessToken());
-		Intent intent = new Intent(LoginActivity.this, TabsFragmentActivity.class);
+		Intent intent = new Intent(this, FriendPicker.class);
+		intent.putExtras(bundle);
+		              
+	    
 		startActivity(intent);
 	}
 
