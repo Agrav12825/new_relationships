@@ -10,7 +10,7 @@ import android.view.ViewGroup;
 
 import com.facebook.widget.LoginButton;
 
-public class OldSplash extends Fragment {
+public class SplashFragment extends Fragment {
 
 	@Override
 	public View onCreateView(LayoutInflater inflater, 

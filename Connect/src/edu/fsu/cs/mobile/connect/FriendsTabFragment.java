@@ -12,7 +12,7 @@ import android.widget.ListView;
 public class FriendsTabFragment extends Fragment {
 
 	private ListView listView;
-	private CustomAdapter adapter;
+	private FriendListAdapter adapter;
 
 	
 	@Override
